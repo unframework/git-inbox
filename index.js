@@ -152,9 +152,18 @@ git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cl
                 );
             });
         });
+    }).then(function (commit) {
+        console.log('committed files', commit.allocfmt());
+
+        return repo.getRemote('origin').then(function (remote) {
+            var pushOptions = new git.PushOptions();
+            pushOptions.callbacks = remoteCallbacks;
+
+            return remote.push(['refs/heads/master:refs/heads/master'], pushOptions);
+        });
     });
-}).then(function (commitId) {
-    console.log('committed files', commitId.allocfmt());
+}).then(function () {
+    console.log('pushed');
 }, function (err) {
-    console.log('error cloning', err);
+    console.log('error', err);
 });
