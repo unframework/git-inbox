@@ -104,6 +104,8 @@ iterateItems(function (key, data) {
 var yamlData = yaml.safeDump(itemMap, { indent: 4 });
 
 var workspaceDirPath = __dirname + '/.repo-workspace/' + moment().format('YYYY-MM-DD-HH-mm-ss');
+var yamlRepoPath = 'example.yml';
+var sourceCopyRepoPath = 'example.xlsx';
 
 var remoteCallbacks = new git.RemoteCallbacks();
 remoteCallbacks.credentials = function (url, username) {
@@ -117,40 +119,56 @@ remoteCallbacks.credentials = function (url, username) {
     );
 };
 
+function createIndexEntry(repo, repoPath, dataBuffer) {
+    var oid = git.Blob.createFromBuffer(repo, dataBuffer, dataBuffer.length);
+
+    var indexEntry = new git.IndexEntry();
+    indexEntry.path = repoPath;
+    indexEntry.flags = 0; // explicit init avoids unpredictable behaviour: https://github.com/nodegit/nodegit/issues/816
+    indexEntry.uid = 0;
+    indexEntry.gid = 0;
+    indexEntry.ino = 0;
+    indexEntry.dev = 0;
+    indexEntry.id = oid;
+    indexEntry.mode = git.TreeEntry.FILEMODE.BLOB;
+
+    return indexEntry;
+}
+
 var fetchOptions = new git.FetchOptions();
 fetchOptions.prune = 1;
 fetchOptions.callbacks = remoteCallbacks;
 
 var cloneOptions = new git.CloneOptions();
+cloneOptions.bare = 1;
 cloneOptions.checkoutBranch = 'master';
 cloneOptions.fetchOpts = fetchOptions;
 
 git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function (repo) {
     console.log('done!');
 
-    var yamlFilePath = workspaceDirPath + '/example.yml';
-    var sourceCopyFilePath = workspaceDirPath + '/example.xlsx';
-
-    var oldData = fs.readFileSync(yamlFilePath, 'utf8');
-
-    if (oldData === yamlData) {
-        throw new Error('no data change to commit');
+    function loadHeadCommit() {
+        console.log('getting the master HEAD');
+        return git.Reference.nameToId(repo, 'HEAD').then(function (head) { return repo.getCommit(head); });
     }
 
-    // copy over the new files
-    fs.writeFileSync(yamlFilePath, yamlData);
-    fs.writeFileSync(sourceCopyFilePath, fs.readFileSync(sourceFilePath));
-
     // stage changes
+    // @todo check diff? what if we add dynamic header comment though
     return repo.openIndex().then(function (index) {
-        console.log('adding');
+        console.log('adding updated files');
 
-        index.addByPath('example.yml');
-        index.addByPath('example.xlsx');
-        index.write();
+        return loadHeadCommit().then(function (headCommit) { return headCommit.getTree(); }).then(function (headCommitTree) {
+            index.readTree(headCommitTree);
+            index.read(); // @todo does this do anything?
 
-        return index.writeTree().then(function (indexOid) {
-            return git.Reference.nameToId(repo, 'HEAD').then(function (head) { return repo.getCommit(head); }).then(function (headCommit) {
+            index.add(createIndexEntry(repo, yamlRepoPath, new Buffer(yamlData)));
+            index.add(createIndexEntry(repo, sourceCopyRepoPath, fs.readFileSync(sourceFilePath)));
+
+            index.write();
+
+            return index.writeTree();
+        }).then(function (indexOid) {
+            return loadHeadCommit().then(function (headCommit) {
                 var commitTimestamp = moment().unix();
                 var author = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
                 var committer = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
