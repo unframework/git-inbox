@@ -1,10 +1,14 @@
+var fs = require('fs');
 var XLSX = require('xlsx');
 var yaml = require('js-yaml');
 var git = require('nodegit');
+var moment = require('moment');
 
 var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-var workbook = XLSX.readFile('example.xlsx');
+var sourceFilePath = __dirname + '/example.xlsx';
+
+var workbook = XLSX.readFile(sourceFilePath);
 
 var firstSheetName = workbook.SheetNames[0];
 var firstSheet = workbook.Sheets[firstSheetName];
@@ -99,7 +103,7 @@ iterateItems(function (key, data) {
 
 var yamlData = yaml.safeDump(itemMap, { indent: 4 });
 
-var workspaceDirPath = __dirname + '/.repo-workspace';
+var workspaceDirPath = __dirname + '/.repo-workspace/' + moment().format('YYYY-MM-DD-HH-mm-ss');
 
 var remoteCallbacks = new git.RemoteCallbacks();
 remoteCallbacks.credentials = function (url, username) {
@@ -121,8 +125,36 @@ var cloneOptions = new git.CloneOptions();
 cloneOptions.checkoutBranch = 'master';
 cloneOptions.fetchOpts = fetchOptions;
 
-git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function () {
+git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function (repo) {
     console.log('done!');
+
+    // copy over the new files
+    fs.writeFileSync(workspaceDirPath + '/example.yml', yamlData);
+    fs.writeFileSync(workspaceDirPath + '/example.xlsx', fs.readFileSync(sourceFilePath));
+
+    // stage changes
+    return repo.openIndex().then(function (index) {
+        console.log('adding');
+
+        return index.addAll().then(function () { return index.write(); }).then(function () { return index.writeTree(); }).then(function (indexOid) {
+            return git.Reference.nameToId(repo, 'HEAD').then(function (head) { return repo.getCommit(head); }).then(function (headCommit) {
+                var commitTimestamp = moment().unix();
+                var author = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
+                var committer = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
+
+                return repo.createCommit(
+                    'HEAD',
+                    author,
+                    committer,
+                    'Applied a new XLSX import',
+                    indexOid,
+                    [ headCommit ]
+                );
+            });
+        });
+    });
+}).then(function (commitId) {
+    console.log('committed files', commitId.allocfmt());
 }, function (err) {
     console.log('error cloning', err);
 });
