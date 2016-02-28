@@ -1,0 +1,15 @@
+{
+  "name": "xlsx-yaml",
+  "version": "0.0.0",
+  "description": "XLSX to YAML magic",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nick Matantsev <nick.matantsev@gmail.com>",
+  "license": "Proprietary",
+  "dependencies": {
+    "js-yaml": "^3.5.3",
+    "xlsx": "^0.8.0"
+  }
+}
