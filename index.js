@@ -26,8 +26,6 @@ var lastItemIndex = parseInt(match[4], 10);
 function getCellAsString(cellCoord) {
     var cell = firstSheet[cellCoord];
 
-if (cell && !cell.XF) { console.log(cell); }
-
     return cell
         ? (Object.prototype.hasOwnProperty.call(cell, 'w')
             ? cell.w
