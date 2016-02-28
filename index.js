@@ -128,15 +128,28 @@ cloneOptions.fetchOpts = fetchOptions;
 git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function (repo) {
     console.log('done!');
 
+    var yamlFilePath = workspaceDirPath + '/example.yml';
+    var sourceCopyFilePath = workspaceDirPath + '/example.xlsx';
+
+    var oldData = fs.readFileSync(yamlFilePath, 'utf8');
+
+    if (oldData === yamlData) {
+        throw new Error('no data change to commit');
+    }
+
     // copy over the new files
-    fs.writeFileSync(workspaceDirPath + '/example.yml', yamlData);
-    fs.writeFileSync(workspaceDirPath + '/example.xlsx', fs.readFileSync(sourceFilePath));
+    fs.writeFileSync(yamlFilePath, yamlData);
+    fs.writeFileSync(sourceCopyFilePath, fs.readFileSync(sourceFilePath));
 
     // stage changes
     return repo.openIndex().then(function (index) {
         console.log('adding');
 
-        return index.addAll().then(function () { return index.write(); }).then(function () { return index.writeTree(); }).then(function (indexOid) {
+        index.addByPath('example.yml');
+        index.addByPath('example.xlsx');
+        index.write();
+
+        return index.writeTree().then(function (indexOid) {
             return git.Reference.nameToId(repo, 'HEAD').then(function (head) { return repo.getCommit(head); }).then(function (headCommit) {
                 var commitTimestamp = moment().unix();
                 var author = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
@@ -146,7 +159,7 @@ git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cl
                     'HEAD',
                     author,
                     committer,
-                    'Applied a new XLSX import',
+                    'Imported XLSX data',
                     indexOid,
                     [ headCommit ]
                 );
@@ -165,5 +178,5 @@ git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cl
 }).then(function () {
     console.log('pushed');
 }, function (err) {
-    console.log('error', err);
+    console.log('error', err, err.stack);
 });
