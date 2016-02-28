@@ -10,6 +10,7 @@
   "license": "Proprietary",
   "dependencies": {
     "js-yaml": "^3.5.3",
+    "nodegit": "^0.11.5",
     "xlsx": "^0.8.0"
   }
 }

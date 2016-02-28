@@ -1,5 +1,6 @@
 var XLSX = require('xlsx');
 var yaml = require('js-yaml');
+var git = require('nodegit');
 
 var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -96,4 +97,32 @@ iterateItems(function (key, data) {
     itemMap[key] = item;
 });
 
-console.log(yaml.safeDump(itemMap, { indent: 4 }));
+var yamlData = yaml.safeDump(itemMap, { indent: 4 });
+
+var workspaceDirPath = __dirname + '/.repo-workspace';
+
+var remoteCallbacks = new git.RemoteCallbacks();
+remoteCallbacks.credentials = function (url, username) {
+    console.log('using credentials');
+
+    return git.Cred.sshKeyNew(
+        username,
+        __dirname + '/../../../.ssh/github_rsa.pub',
+        __dirname + '/../../../.ssh/github_rsa',
+        ''
+    );
+};
+
+var fetchOptions = new git.FetchOptions();
+fetchOptions.prune = 1;
+fetchOptions.callbacks = remoteCallbacks;
+
+var cloneOptions = new git.CloneOptions();
+cloneOptions.checkoutBranch = 'master';
+cloneOptions.fetchOpts = fetchOptions;
+
+git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function () {
+    console.log('done!');
+}, function (err) {
+    console.log('error cloning', err);
+});
