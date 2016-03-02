@@ -6,6 +6,8 @@ var moment = require('moment');
 
 var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+var gitUrl = process.env.TARGET_GIT_URL || '';
+
 var sourceFilePath = __dirname + '/example.xlsx';
 
 var workbook = XLSX.readFile(sourceFilePath);
@@ -107,17 +109,7 @@ var workspaceDirPath = __dirname + '/.repo-workspace/' + moment().format('YYYY-M
 var yamlRepoPath = 'example.yml';
 var sourceCopyRepoPath = 'example.xlsx';
 
-var remoteCallbacks = new git.RemoteCallbacks();
-remoteCallbacks.credentials = function (url, username) {
-    console.log('using credentials');
-
-    return git.Cred.sshKeyNew(
-        username,
-        __dirname + '/../../../.ssh/github_rsa.pub',
-        __dirname + '/../../../.ssh/github_rsa',
-        ''
-    );
-};
+var remoteCallbacks = new git.RemoteCallbacks(); // empty for now, but injecting into places for consistency
 
 function createIndexEntry(repo, repoPath, dataBuffer) {
     var oid = git.Blob.createFromBuffer(repo, dataBuffer, dataBuffer.length);
@@ -144,7 +136,7 @@ cloneOptions.bare = 1;
 cloneOptions.checkoutBranch = 'master';
 cloneOptions.fetchOpts = fetchOptions;
 
-git.Clone('git@github.com:unframework/scratchpad-repo.git', workspaceDirPath, cloneOptions).then(function (repo) {
+git.Clone(gitUrl, workspaceDirPath, cloneOptions).then(function (repo) {
     console.log('done!');
 
     function loadHeadCommit() {
