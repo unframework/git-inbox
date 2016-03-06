@@ -1,4 +1,5 @@
 var fs = require('fs');
+var path = require('path');
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
@@ -13,21 +14,57 @@ var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
 
-var slackConfigYaml = configYaml.slack || {};
+var slackConfigYaml = configYaml.slack || [];
 
-var slackMatcherList = Object.keys(slackConfigYaml).map(function (globPattern) {
+function expectedString(v) {
+    if (typeof v !== 'string') {
+        throw new Error('expected string');
+    }
+
+    return v;
+}
+
+function createPrefixMatcher(baseName) {
+    return function (fileName) {
+        return fileName.slice(0, baseName.length) === baseName;
+    };
+}
+
+function createGlobMatcher(globPattern) {
     // globs with no funny business
-    var regexp = new Minimatch(globPattern, {
+    var mm = new Minimatch(globPattern, {
         noext: true,
         nocase: true,
         nocomment: true,
         nonegate: true
-    }).makeRe();
-
-    var targetPath = slackConfigYaml[globPattern];
+    });
 
     return function (fileName) {
-        return regexp.exec(fileName) ? targetPath : null;
+        return mm.match(fileName);
+    };
+}
+
+var slackMatcherList = slackConfigYaml.map(function (matcherConfigYaml) {
+    // simple strings are meant to define target path
+    if (typeof matcherConfigYaml !== 'object') {
+        matcherConfigYaml = {
+            in: null,
+            out: expectedString(matcherConfigYaml)
+        };
+    }
+
+    // target path is just a string for now
+    var outConfigYaml = matcherConfigYaml.out || null;
+    var targetPath = expectedString(outConfigYaml);
+
+    // input is either a glob pattern or by default matches exact basename of target path minus extension
+    var inConfigYaml = matcherConfigYaml.in || null;
+    var matchExec = inConfigYaml === null
+        ? createPrefixMatcher(path.basename(targetPath, path.extname(targetPath)))
+        : createGlobMatcher(expectedString(inConfigYaml));
+
+    return function (fileName) {
+        return matchExec(fileName) ? targetPath : null;
     };
 });
 

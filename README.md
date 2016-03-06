@@ -27,5 +27,5 @@ node index.js
 
 # Slack tests
 . env.sh
-supervisor slack.js
+supervisor --extensions 'js,yml' slack.js
 ```

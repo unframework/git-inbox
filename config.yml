@@ -1,3 +1,6 @@
 # configure slack listener
 slack:
-    example*.xlsx: example.yml
+  - data/simple-example.yml # simple target path
+
+  - in: example*.xlsx # glob
+    out: example.yml # target path
