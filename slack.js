@@ -1,8 +1,13 @@
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
+var yaml = require('js-yaml');
+
+var parseXLSX = require('./lib/parseXLSX');
+var Repo = require('./lib/Repo');
 
 var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
+var gitUrl = process.env.TARGET_GIT_URL || '';
 
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
@@ -55,12 +60,38 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
     console.log('shared file', file.id, file.name, channelId);
 
-    getSlackFile(file).then(function (body) {
-        console.log('got data', body.length);
+    var downloadedLength = null;
+    var parsedItemCount = null;
+    var commitHash = null;
+
+    getSlackFile(file).then(function (sourceFileBuffer) {
+        downloadedLength = sourceFileBuffer.length;
+
+        console.log('got data', downloadedLength);
+
+        var itemMap = parseXLSX(sourceFileBuffer);
+        parsedItemCount = Object.keys(itemMap).length;
+
+        console.log('parsed item count', parsedItemCount);
+
+        var yamlData = yaml.safeDump(itemMap, { indent: 4 });
+
+        var fileMap = {};
+        fileMap['example.yml'] = new Buffer(yamlData);
+        fileMap['example.xlsx'] = sourceFileBuffer;
+
+        var repo = new Repo(gitUrl);
+
+        return repo.commitFiles(fileMap).then(function (commit) {
+            commitHash = commit.allocfmt();
+            console.log('committed files', commitHash);
+
+            return repo.push();
+        });
     }).then(function () {
         console.log('successfully processed slack upload', file.name);
 
-        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name), channelId);
+        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, ' + parsedItemCount + ' items, commit hash ' + commitHash + ')', channelId);
     }, function (err) {
         console.error('error processing slack upload', file.name, err);
 
