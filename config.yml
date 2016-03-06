@@ -7,5 +7,5 @@ slack:
 
   - in: raw-example*.xlsx
     out:
-      format: raw
+      format: copy
       path: data/raw-example.xlsx

@@ -58,8 +58,8 @@ function createYamlFormatter(targetPath) {
     };
 }
 
-function createRawFormatter(targetPath) {
-    console.log('formatting as raw:', targetPath);
+function createCopyFormatter(targetPath) {
+    console.log('formatting as copy:', targetPath);
 
     // simple file copy
     return function (sourceFileBuffer, fileMap) {
@@ -76,14 +76,14 @@ function autodetectFormatter(targetPath) {
         return createYamlFormatter(targetPath);
     }
 
-    return createRawFormatter(targetPath);
+    return createCopyFormatter(targetPath);
 }
 
 function chooseFormatter(format, targetPath) {
     if (format === 'yaml') {
         return createYamlFormatter(targetPath);
-    } else if (format === 'raw') {
-        return createRawFormatter(targetPath);
+    } else if (format === 'copy') {
+        return createCopyFormatter(targetPath);
     }
 
     throw new Error('unknown format: ' + format);
