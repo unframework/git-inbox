@@ -4,3 +4,8 @@ slack:
 
   - in: example*.xlsx # glob
     out: example.yml # target path
+
+  - in: raw-example*.xlsx
+    out:
+      format: raw
+      path: data/raw-example.xlsx
