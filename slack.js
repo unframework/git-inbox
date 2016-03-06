@@ -44,6 +44,51 @@ function createGlobMatcher(globPattern) {
     };
 }
 
+function createYamlFormatter(targetPath) {
+    console.log('formatting as YAML:', targetPath);
+
+    // parse as a sheet
+    return function (sourceFileBuffer, fileMap) {
+        var itemMap = parseXLSX(sourceFileBuffer);
+
+        var yamlData = yaml.safeDump(itemMap, { indent: 4 });
+        var yamlDataBuffer = new Buffer(yamlData);
+
+        fileMap[targetPath] = yamlDataBuffer;
+    };
+}
+
+function createRawFormatter(targetPath) {
+    console.log('formatting as raw:', targetPath);
+
+    // simple file copy
+    return function (sourceFileBuffer, fileMap) {
+        fileMap[targetPath] = sourceFileBuffer;
+    };
+}
+
+function autodetectFormatter(targetPath) {
+    var ext = path.extname(targetPath).toLowerCase();
+
+    console.log('auto-detect by extension', ext);
+
+    if (ext === '.yml' || ext === '.yaml') {
+        return createYamlFormatter(targetPath);
+    }
+
+    return createRawFormatter(targetPath);
+}
+
+function chooseFormatter(format, targetPath) {
+    if (format === 'yaml') {
+        return createYamlFormatter(targetPath);
+    } else if (format === 'raw') {
+        return createRawFormatter(targetPath);
+    }
+
+    throw new Error('unknown format: ' + format);
+}
+
 var slackMatcherList = slackConfigYaml.map(function (matcherConfigYaml) {
     // simple strings are meant to define target path
     if (typeof matcherConfigYaml !== 'object') {
@@ -53,9 +98,22 @@ var slackMatcherList = slackConfigYaml.map(function (matcherConfigYaml) {
         };
     }
 
-    // target path is just a string for now
+    // simple strings are treated as path with auto-detect format
     var outConfigYaml = matcherConfigYaml.out || null;
-    var targetPath = expectedString(outConfigYaml);
+
+    if (typeof outConfigYaml !== 'object') {
+        outConfigYaml = {
+            format: null,
+            path: outConfigYaml
+        };
+    }
+
+    var targetPath = expectedString(outConfigYaml.path);
+
+    // detect the format if needed
+    var formatter = outConfigYaml.format === null
+        ? autodetectFormatter(targetPath)
+        : chooseFormatter(outConfigYaml.format, targetPath);
 
     // input is either a glob pattern or by default matches exact basename of target path minus extension
     var inConfigYaml = matcherConfigYaml.in || null;
@@ -64,7 +122,7 @@ var slackMatcherList = slackConfigYaml.map(function (matcherConfigYaml) {
         : createGlobMatcher(expectedString(inConfigYaml));
 
     return function (fileName) {
-        return matchExec(fileName) ? targetPath : null;
+        return matchExec(fileName) ? formatter : null;
     };
 });
 
@@ -124,12 +182,12 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
     console.log('shared file', file.id, file.name, channelId);
 
     // match up against what we have
-    var targetPathList = slackMatcherList.map(function (matcher) {
+    var targetFormatterList = slackMatcherList.map(function (matcher) {
         return matcher(file.name);
-    }).filter(function (path) { return path !== null; });
+    }).filter(function (formatter) { return formatter !== null; });
 
     // no need to keep going
-    if (targetPathList.length < 1) {
+    if (targetFormatterList.length < 1) {
         console.log('no target paths matched, ignoring');
         return;
     }
@@ -144,7 +202,6 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
     ].join("\n");
 
     var downloadedLength = null;
-    var parsedItemCount = null;
     var commitHash = null;
 
     getSlackFile(file).then(function (sourceFileBuffer) {
@@ -152,18 +209,10 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
         console.log('got data', downloadedLength);
 
-        var itemMap = parseXLSX(sourceFileBuffer);
-        parsedItemCount = Object.keys(itemMap).length;
-
-        console.log('parsed item count', parsedItemCount);
-
-        var yamlData = yaml.safeDump(itemMap, { indent: 4 });
-        var yamlDataBuffer = new Buffer(yamlData);
-
         var fileMap = {};
 
-        targetPathList.forEach(function (targetPath) {
-            fileMap[targetPath] = yamlDataBuffer;
+        targetFormatterList.forEach(function (targetFormatter) {
+            targetFormatter(sourceFileBuffer, fileMap);
         });
 
         var repo = new Repo(gitUrl);
@@ -177,7 +226,7 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
     }).then(function () {
         console.log('successfully processed slack upload', file.name);
 
-        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, ' + parsedItemCount + ' items, commit hash ' + commitHash + ')', channelId);
+        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, commit hash ' + commitHash + ')', channelId);
     }, function (err) {
         console.error('error processing slack upload', file.name, err);
 
