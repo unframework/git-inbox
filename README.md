@@ -2,9 +2,12 @@
 
 ## @todo
 
-- simple text uploads
+- text/raw uploads
+- CSV uploads
 - issue pull request to branch instead of direct push
     - allow multiple successive uploads to same PR
+- fix logging
+- customizable committer/author
 
 ## Development
 
