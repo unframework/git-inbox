@@ -9,6 +9,7 @@
   "author": "Nick Matantsev <nick.matantsev@gmail.com>",
   "license": "Proprietary",
   "dependencies": {
+    "bluebird": "^3.3.3",
     "js-yaml": "^3.5.3",
     "moment": "^2.11.2",
     "nodegit": "^0.11.5",
