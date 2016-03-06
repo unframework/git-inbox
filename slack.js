@@ -78,7 +78,6 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
         var fileMap = {};
         fileMap['example.yml'] = new Buffer(yamlData);
-        fileMap['example.xlsx'] = sourceFileBuffer;
 
         var repo = new Repo(gitUrl);
 
