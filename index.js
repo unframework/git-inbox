@@ -1,8 +1,6 @@
 var fs = require('fs');
 var XLSX = require('xlsx');
 var yaml = require('js-yaml');
-var git = require('nodegit');
-var moment = require('moment');
 
 var Repo = require('./lib/Repo');
 
