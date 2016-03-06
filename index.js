@@ -107,11 +107,12 @@ iterateItems(function (key, data) {
 
 var yamlData = yaml.safeDump(itemMap, { indent: 4 });
 
-var yamlBuffer = new Buffer(yamlData);
-var sourceFileBuffer = fs.readFileSync(sourceFilePath);
+var fileMap = {};
+fileMap['example.yml'] = new Buffer(yamlData);
+fileMap['example.xlsx'] = fs.readFileSync(sourceFilePath);
 
 var repo = new Repo(gitUrl);
-repo.commitFile(yamlBuffer, sourceFileBuffer).then(function (commit) {
+repo.commitFiles(fileMap).then(function (commit) {
     console.log('committed files', commit.allocfmt());
 
     return repo.push();
