@@ -11,8 +11,9 @@ var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var sourceFilePath = __dirname + '/example.xlsx';
+var sourceBuffer = fs.readFileSync(sourceFilePath);
 
-var workbook = XLSX.readFile(sourceFilePath);
+var workbook = XLSX.read(sourceBuffer);
 
 var firstSheetName = workbook.SheetNames[0];
 var firstSheet = workbook.Sheets[firstSheetName];
@@ -109,7 +110,7 @@ var yamlData = yaml.safeDump(itemMap, { indent: 4 });
 
 var fileMap = {};
 fileMap['example.yml'] = new Buffer(yamlData);
-fileMap['example.xlsx'] = fs.readFileSync(sourceFilePath);
+fileMap['example.xlsx'] = sourceBuffer;
 
 var repo = new Repo(gitUrl);
 repo.commitFiles(fileMap).then(function (commit) {
