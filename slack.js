@@ -17,17 +17,17 @@ var slackConfigYaml = configYaml.slack || {};
 
 var slackMatcherList = Object.keys(slackConfigYaml).map(function (globPattern) {
     // globs with no funny business
-    var mm = new Minimatch(globPattern, {
+    var regexp = new Minimatch(globPattern, {
         noext: true,
         nocase: true,
         nocomment: true,
         nonegate: true
-    });
+    }).makeRe();
 
     var targetPath = slackConfigYaml[globPattern];
 
     return function (fileName) {
-        return mm.match(fileName) ? targetPath : null;
+        return regexp.exec(fileName) ? targetPath : null;
     };
 });
 
