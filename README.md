@@ -19,7 +19,7 @@ EOF
 
 # repo tests
 . env.sh
-supervisor index.js
+node index.js
 
 # Slack tests
 . env.sh

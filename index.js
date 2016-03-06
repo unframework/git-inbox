@@ -4,6 +4,8 @@ var yaml = require('js-yaml');
 var git = require('nodegit');
 var moment = require('moment');
 
+var Repo = require('./lib/Repo');
+
 var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 var gitUrl = process.env.TARGET_GIT_URL || '';
@@ -105,86 +107,14 @@ iterateItems(function (key, data) {
 
 var yamlData = yaml.safeDump(itemMap, { indent: 4 });
 
-var workspaceDirPath = __dirname + '/.repo-workspace/' + moment().format('YYYY-MM-DD-HH-mm-ss');
-var yamlRepoPath = 'example.yml';
-var sourceCopyRepoPath = 'example.xlsx';
+var yamlBuffer = new Buffer(yamlData);
+var sourceFileBuffer = fs.readFileSync(sourceFilePath);
 
-var remoteCallbacks = new git.RemoteCallbacks(); // empty for now, but injecting into places for consistency
+var repo = new Repo(gitUrl);
+repo.commitFile(yamlBuffer, sourceFileBuffer).then(function (commit) {
+    console.log('committed files', commit.allocfmt());
 
-function createIndexEntry(repo, repoPath, dataBuffer) {
-    var oid = git.Blob.createFromBuffer(repo, dataBuffer, dataBuffer.length);
-
-    var indexEntry = new git.IndexEntry();
-    indexEntry.path = repoPath;
-    indexEntry.flags = 0; // explicit init avoids unpredictable behaviour: https://github.com/nodegit/nodegit/issues/816
-    indexEntry.uid = 0;
-    indexEntry.gid = 0;
-    indexEntry.ino = 0;
-    indexEntry.dev = 0;
-    indexEntry.id = oid;
-    indexEntry.mode = git.TreeEntry.FILEMODE.BLOB;
-
-    return indexEntry;
-}
-
-var fetchOptions = new git.FetchOptions();
-fetchOptions.prune = 1;
-fetchOptions.callbacks = remoteCallbacks;
-
-var cloneOptions = new git.CloneOptions();
-cloneOptions.bare = 1;
-cloneOptions.checkoutBranch = 'master';
-cloneOptions.fetchOpts = fetchOptions;
-
-git.Clone(gitUrl, workspaceDirPath, cloneOptions).then(function (repo) {
-    console.log('done!');
-
-    function loadHeadCommit() {
-        console.log('getting the master HEAD');
-        return git.Reference.nameToId(repo, 'HEAD').then(function (head) { return repo.getCommit(head); });
-    }
-
-    // stage changes
-    // @todo check diff? what if we add dynamic header comment though
-    return repo.openIndex().then(function (index) {
-        console.log('adding updated files');
-
-        return loadHeadCommit().then(function (headCommit) { return headCommit.getTree(); }).then(function (headCommitTree) {
-            index.readTree(headCommitTree);
-            index.read(); // @todo does this do anything?
-
-            index.add(createIndexEntry(repo, yamlRepoPath, new Buffer(yamlData)));
-            index.add(createIndexEntry(repo, sourceCopyRepoPath, fs.readFileSync(sourceFilePath)));
-
-            index.write();
-
-            return index.writeTree();
-        }).then(function (indexOid) {
-            return loadHeadCommit().then(function (headCommit) {
-                var commitTimestamp = moment().unix();
-                var author = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
-                var committer = git.Signature.create('git-inbox', 'git-inbox@example.com', commitTimestamp, 0);
-
-                return repo.createCommit(
-                    'HEAD',
-                    author,
-                    committer,
-                    'Imported XLSX data',
-                    indexOid,
-                    [ headCommit ]
-                );
-            });
-        });
-    }).then(function (commit) {
-        console.log('committed files', commit.allocfmt());
-
-        return repo.getRemote('origin').then(function (remote) {
-            var pushOptions = new git.PushOptions();
-            pushOptions.callbacks = remoteCallbacks;
-
-            return remote.push(['refs/heads/master:refs/heads/master'], pushOptions);
-        });
-    });
+    return repo.push();
 }).then(function () {
     console.log('pushed');
 }, function (err) {
