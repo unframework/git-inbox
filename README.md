@@ -8,6 +8,7 @@
     - allow multiple successive uploads to same PR
 - fix logging
 - customizable committer/author
+- declarative (target-first) file listener config
 
 ## Development
 

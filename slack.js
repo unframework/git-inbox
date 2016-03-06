@@ -1,13 +1,39 @@
+var fs = require('fs');
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
 var yaml = require('js-yaml');
+var Minimatch = require('minimatch').Minimatch;
 
 var parseXLSX = require('./lib/parseXLSX');
 var Repo = require('./lib/Repo');
 
 var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
+
+var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
+
+var slackConfigYaml = configYaml.slack || {};
+
+var slackMatcherList = Object.keys(slackConfigYaml).map(function (globPattern) {
+    // globs with no funny business
+    var mm = new Minimatch(globPattern, {
+        noext: true,
+        nocase: true,
+        nocomment: true,
+        nonegate: true
+    });
+
+    var targetPath = slackConfigYaml[globPattern];
+
+    return function (fileName) {
+        return mm.match(fileName) ? targetPath : null;
+    };
+});
+
+if (slackMatcherList.length < 1) {
+    throw new Error('set up at least one Slack upload match pattern');
+}
 
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
@@ -60,6 +86,17 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
     console.log('shared file', file.id, file.name, channelId);
 
+    // match up against what we have
+    var targetPathList = slackMatcherList.map(function (matcher) {
+        return matcher(file.name);
+    }).filter(function (path) { return path !== null; });
+
+    // no need to keep going
+    if (targetPathList.length < 1) {
+        console.log('no target paths matched, ignoring');
+        return;
+    }
+
     // @todo reconsider user IDs in commits?
     var commitMessage = [
         'Slack upload: ' + file.name,
@@ -84,9 +121,13 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
         console.log('parsed item count', parsedItemCount);
 
         var yamlData = yaml.safeDump(itemMap, { indent: 4 });
+        var yamlDataBuffer = new Buffer(yamlData);
 
         var fileMap = {};
-        fileMap['example.yml'] = new Buffer(yamlData);
+
+        targetPathList.forEach(function (targetPath) {
+            fileMap[targetPath] = yamlDataBuffer;
+        });
 
         var repo = new Repo(gitUrl);
 

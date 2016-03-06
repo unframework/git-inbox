@@ -1,0 +1,3 @@
+# configure slack listener
+slack:
+    example*.xlsx: example.yml
