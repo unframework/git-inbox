@@ -60,6 +60,15 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
     console.log('shared file', file.id, file.name, channelId);
 
+    // @todo reconsider user IDs in commits?
+    var commitMessage = [
+        'Slack upload: ' + file.name,
+        '',
+        'File Slack ID: ' + file.id,
+        'Sharer Slack ID: ' + e.user,
+        'Uploader Slack ID: ' + file.user
+    ].join("\n");
+
     var downloadedLength = null;
     var parsedItemCount = null;
     var commitHash = null;
@@ -81,7 +90,7 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
         var repo = new Repo(gitUrl);
 
-        return repo.commitFiles(fileMap).then(function (commit) {
+        return repo.commitFiles(fileMap, commitMessage).then(function (commit) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 

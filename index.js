@@ -18,7 +18,7 @@ fileMap['example.yml'] = new Buffer(yamlData);
 fileMap['example.xlsx'] = sourceBuffer;
 
 var repo = new Repo(gitUrl);
-repo.commitFiles(fileMap).then(function (commit) {
+repo.commitFiles(fileMap. 'Imported XLSX data').then(function (commit) {
     console.log('committed files', commit.allocfmt());
 
     return repo.push();
