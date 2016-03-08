@@ -10,4 +10,5 @@ slack:
       format: copy
       path: data/raw-example.xlsx
 
-push: test-push
+push:
+  type: github-request

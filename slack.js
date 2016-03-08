@@ -4,6 +4,7 @@ var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
 var yaml = require('js-yaml');
+var moment = require('moment');
 var Minimatch = require('minimatch').Minimatch;
 
 var parseXLSX = require('./lib/parseXLSX');
@@ -23,9 +24,15 @@ if (typeof pushConfigYaml !== 'object') {
     };
 }
 
-var pushBranch = null;
+var branchNameGenerator = null;
 if (pushConfigYaml.type === 'branch') {
-    pushBranch = expectedString(pushConfigYaml.branch === null ? 'master' : pushConfigYaml.branch);
+    branchNameGenerator = function (userId) {
+        return expectedString(pushConfigYaml.branch === null ? 'master' : pushConfigYaml.branch);
+    };
+} else if (pushConfigYaml.type === 'github-request') {
+    branchNameGenerator = function (userId) {
+        return ('git-inbox-' + userId + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase();
+    };
 } else {
     throw new Error('expected branch push type');
 }
@@ -237,7 +244,7 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            return repo.push(pushBranch);
+            return repo.push(branchNameGenerator(e.user));
         });
     }).then(function () {
         console.log('successfully processed slack upload', file.name);
