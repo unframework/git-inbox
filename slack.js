@@ -155,6 +155,59 @@ if (slackMatcherList.length < 1) {
     throw new Error('set up at least one Slack upload match pattern');
 }
 
+function getGitHubPullCreationUrl(repoUrl) {
+    var match = /([^\/]+)\/([^\/]+?)(\.git)?$/.exec(repoUrl);
+    if (!match) {
+        throw new Error('not a recognizable GitHub repo URL');
+    }
+
+    var owner = match[1];
+    var repo = match[2];
+
+    return 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/pulls';
+}
+
+function getGitHubAuthToken(repoUrl) {
+    var match = /:([^:]+)@github.com\//.exec(repoUrl);
+    if (!match) {
+        throw new Error('not a recognizable GitHub repo URL');
+    }
+
+    return match[1];
+}
+
+function submitGitHubPull(branchName, slackUserId) {
+    var url = getGitHubPullCreationUrl(gitUrl);
+    var authToken = getGitHubAuthToken(gitUrl);
+
+    return new Promise(function (resolve, reject) {
+        console.log('GitHub PR creation post', url);
+
+        request.post({
+            url: url,
+            auth: { bearer: authToken },
+            headers: {
+                'User-Agent': 'git-inbox (unframework.com)'
+            },
+            json: true,
+            body: {
+                title: 'Incoming git-inbox upload by Slack user ' + slackUserId,
+                head: branchName,
+                base: 'master' // @todo configure
+            }
+        }, function (err, resp, body) {
+            if (err || resp.statusCode !== 201) {
+                reject(err || body);
+                return;
+            }
+
+            console.log('GitHub PR creation response', resp.statusCode, body);
+
+            resolve(body.html_url);
+        });
+    });
+}
+
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
         var fileUrl = file.url_private_download;
@@ -246,12 +299,17 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            return repo.push(branchNameGenerator(e.user));
-        });
-    }).then(function () {
-        console.log('successfully processed slack upload', file.name);
+            var branchName = branchNameGenerator(e.user);
+            var pushResult = repo.push(branchName);
 
-        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, commit hash ' + commitHash + ')', channelId);
+            return pushType === 'github-request'
+                ? pushResult.then(function () { return submitGitHubPull(branchName, e.user); })
+                : pushResult
+        });
+    }).then(function (resultUrl) {
+        console.log('successfully processed slack upload', file.name, resultUrl || '[no result url]');
+
+        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, ' + (resultUrl ? escapeSlackText(resultUrl) : 'commit hash ' + commitHash) + ')', channelId);
     }, function (err) {
         console.error('error processing slack upload', file.name, err);
 
