@@ -305,16 +305,29 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             var pushResult = repo.push(branchName);
 
             return pushType === 'github-request'
-                ? pushResult.then(function () { return submitGitHubPull(branchName, e.user); })
-                : pushResult
+                ? pushResult.then(function () {
+                    return submitGitHubPull(branchName, e.user).then(function (resultUrl) {
+                        return 'GitHub pull request ' + escapeSlackText(resultUrl);
+                    });
+                })
+                : pushResult.then(function () {
+                    return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
+                });
         });
-    }).then(function (resultUrl) {
-        console.log('successfully processed slack upload', file.name, resultUrl || '[no result url]');
+    }).then(function (resultSlackText) {
+        console.log('successfully processed slack upload', file.name);
 
-        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, ' + (resultUrl ? escapeSlackText(resultUrl) : 'commit hash ' + commitHash) + ')', channelId);
+        // @todo markdown needs escaping
+        slackClient.sendMessage([
+            'Received',
+            '*' + escapeSlackText(file.name) + '*',
+            '(' + downloadedLength + ' bytes)',
+            'posted by <@' + e.user + '>,',
+            resultSlackText
+        ].join(' '), channelId);
     }, function (err) {
         console.error('error processing slack upload', file.name, err);
 
-        slackClient.sendMessage('error processing file: ' + escapeSlackText(file.name), channelId);
+        slackClient.sendMessage('Error processing *' + escapeSlackText(file.name) + '* posted by <@' + e.user + '>', channelId);
     });
 });
