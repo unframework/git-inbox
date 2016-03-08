@@ -6,7 +6,7 @@
 - CSV uploads
 - ~~issue pull request to branch instead of direct push~~
 - allow multiple successive uploads to same PR
-- cleanup work directory after push
+- ~~cleanup work directory after push~~
 - fix logging
 - customizable committer/author
 - declarative (target-first) file listener config

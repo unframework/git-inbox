@@ -311,6 +311,11 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
                 : pushResult.then(function () {
                     return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
                 });
+        }).then(function (resultSlackText) {
+            // @todo also cleanup on error
+            return repo.destroy().then(function () {
+                return resultSlackText;
+            });
         });
     }).then(function (resultSlackText) {
         console.log('successfully processed slack upload', file.name);
