@@ -203,8 +203,6 @@ function submitGitHubPull(branchName, slackUserId) {
                 return;
             }
 
-            console.log('GitHub PR creation response', resp.statusCode, body);
-
             resolve(body.html_url);
         });
     });
