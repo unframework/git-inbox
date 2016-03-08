@@ -4,6 +4,7 @@ var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
 var yaml = require('js-yaml');
+var moment = require('moment');
 var Minimatch = require('minimatch').Minimatch;
 
 var parseXLSX = require('./lib/parseXLSX');
@@ -13,6 +14,32 @@ var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
+
+var pushConfigYaml = configYaml.push || null
+
+if (typeof pushConfigYaml !== 'object') {
+    pushConfigYaml = {
+        type: 'branch',
+        branch: pushConfigYaml
+    };
+}
+
+var pushType = expectedString(pushConfigYaml.type);
+
+var branchNameGenerator = null;
+var ghPullBase = null;
+if (pushType === 'branch') {
+    branchNameGenerator = function (userId) {
+        return expectedString(pushConfigYaml.branch || 'master');
+    };
+} else if (pushType === 'github-request') {
+    ghPullBase = expectedString(pushConfigYaml.base || 'master');
+    branchNameGenerator = function (userId) {
+        return ('git-inbox-' + userId + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase();
+    };
+} else {
+    throw new Error('expected branch push type');
+}
 
 var slackConfigYaml = configYaml.slack || [];
 
@@ -130,6 +157,59 @@ if (slackMatcherList.length < 1) {
     throw new Error('set up at least one Slack upload match pattern');
 }
 
+function getGitHubPullCreationUrl(repoUrl) {
+    var match = /([^\/]+)\/([^\/]+?)(\.git)?$/.exec(repoUrl);
+    if (!match) {
+        throw new Error('not a recognizable GitHub repo URL');
+    }
+
+    var owner = match[1];
+    var repo = match[2];
+
+    return 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/pulls';
+}
+
+function getGitHubAuthToken(repoUrl) {
+    var match = /:([^:]+)@github.com\//.exec(repoUrl);
+    if (!match) {
+        throw new Error('not a recognizable GitHub repo URL');
+    }
+
+    return match[1];
+}
+
+function submitGitHubPull(branchName, slackUserId) {
+    var url = getGitHubPullCreationUrl(gitUrl);
+    var authToken = getGitHubAuthToken(gitUrl);
+
+    return new Promise(function (resolve, reject) {
+        console.log('GitHub PR creation post', url);
+
+        request.post({
+            url: url,
+            auth: { bearer: authToken },
+            headers: {
+                'User-Agent': 'git-inbox (unframework.com)'
+            },
+            json: true,
+            body: {
+                title: 'Incoming git-inbox upload by Slack user ' + slackUserId,
+                head: branchName,
+                base: ghPullBase
+            }
+        }, function (err, resp, body) {
+            if (err || resp.statusCode !== 201) {
+                reject(err || body);
+                return;
+            }
+
+            console.log('GitHub PR creation response', resp.statusCode, body);
+
+            resolve(body.html_url);
+        });
+    });
+}
+
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
         var fileUrl = file.url_private_download;
@@ -221,12 +301,17 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            return repo.push();
-        });
-    }).then(function () {
-        console.log('successfully processed slack upload', file.name);
+            var branchName = branchNameGenerator(e.user);
+            var pushResult = repo.push(branchName);
 
-        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, commit hash ' + commitHash + ')', channelId);
+            return pushType === 'github-request'
+                ? pushResult.then(function () { return submitGitHubPull(branchName, e.user); })
+                : pushResult
+        });
+    }).then(function (resultUrl) {
+        console.log('successfully processed slack upload', file.name, resultUrl || '[no result url]');
+
+        slackClient.sendMessage('processed file: ' + escapeSlackText(file.name) + ' (' + downloadedLength + ' bytes, ' + (resultUrl ? escapeSlackText(resultUrl) : 'commit hash ' + commitHash) + ')', channelId);
     }, function (err) {
         console.error('error processing slack upload', file.name, err);
 

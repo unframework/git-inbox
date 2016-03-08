@@ -9,3 +9,7 @@ slack:
     out:
       format: copy
       path: data/raw-example.xlsx
+
+push:
+  type: github-request
+  base: master
