@@ -12,3 +12,4 @@ slack:
 
 push:
   type: github-request
+  base: master

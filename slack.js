@@ -27,11 +27,13 @@ if (typeof pushConfigYaml !== 'object') {
 var pushType = expectedString(pushConfigYaml.type);
 
 var branchNameGenerator = null;
+var ghPullBase = null;
 if (pushType === 'branch') {
     branchNameGenerator = function (userId) {
-        return expectedString(pushConfigYaml.branch === null ? 'master' : pushConfigYaml.branch);
+        return expectedString(pushConfigYaml.branch || 'master');
     };
 } else if (pushType === 'github-request') {
+    ghPullBase = expectedString(pushConfigYaml.base || 'master');
     branchNameGenerator = function (userId) {
         return ('git-inbox-' + userId + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase();
     };
@@ -193,7 +195,7 @@ function submitGitHubPull(branchName, slackUserId) {
             body: {
                 title: 'Incoming git-inbox upload by Slack user ' + slackUserId,
                 head: branchName,
-                base: 'master' // @todo configure
+                base: ghPullBase
             }
         }, function (err, resp, body) {
             if (err || resp.statusCode !== 201) {
