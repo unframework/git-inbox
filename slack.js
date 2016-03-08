@@ -14,6 +14,22 @@ var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
 
+var pushConfigYaml = configYaml.push || null
+
+if (typeof pushConfigYaml !== 'object') {
+    pushConfigYaml = {
+        type: 'branch',
+        branch: pushConfigYaml
+    };
+}
+
+var pushBranch = null;
+if (pushConfigYaml.type === 'branch') {
+    pushBranch = expectedString(pushConfigYaml.branch === null ? 'master' : pushConfigYaml.branch);
+} else {
+    throw new Error('expected branch push type');
+}
+
 var slackConfigYaml = configYaml.slack || [];
 
 function expectedString(v) {
@@ -221,7 +237,7 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            return repo.push();
+            return repo.push(pushBranch);
         });
     }).then(function () {
         console.log('successfully processed slack upload', file.name);
