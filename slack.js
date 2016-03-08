@@ -24,12 +24,14 @@ if (typeof pushConfigYaml !== 'object') {
     };
 }
 
+var pushType = expectedString(pushConfigYaml.type);
+
 var branchNameGenerator = null;
-if (pushConfigYaml.type === 'branch') {
+if (pushType === 'branch') {
     branchNameGenerator = function (userId) {
         return expectedString(pushConfigYaml.branch === null ? 'master' : pushConfigYaml.branch);
     };
-} else if (pushConfigYaml.type === 'github-request') {
+} else if (pushType === 'github-request') {
     branchNameGenerator = function (userId) {
         return ('git-inbox-' + userId + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase();
     };
