@@ -4,8 +4,8 @@
 
 - ~~text/raw uploads~~
 - CSV uploads
-- issue pull request to branch instead of direct push
-    - allow multiple successive uploads to same PR
+- ~~issue pull request to branch instead of direct push~~
+- allow multiple successive uploads to same PR
 - cleanup work directory after push
 - fix logging
 - customizable committer/author
