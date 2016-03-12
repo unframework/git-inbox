@@ -1,5 +1,7 @@
 # git-inbox
 
+Slack bot uploads to Git commits/PRs.
+
 ## To Do
 
 - ~~text/raw uploads~~
