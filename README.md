@@ -1,9 +1,11 @@
 # git-inbox
 
-## @todo
+## To Do
 
 - ~~text/raw uploads~~
 - CSV uploads
+- show diff (if small) in Slack channel as inline attachment
+- use Slack reaction to approve pull request
 - ~~issue pull request to branch instead of direct push~~
 - allow multiple successive uploads to same PR
 - ~~cleanup work directory after push~~
