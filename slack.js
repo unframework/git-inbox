@@ -113,15 +113,6 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
     console.log('shared file', file.id, file.name, channelId);
 
-    // match up against what we have
-    var targetFormatterList = processor.getMatcherList(file.name);
-
-    // no need to keep going
-    if (targetFormatterList.length < 1) {
-        console.log('no target paths matched, ignoring');
-        return;
-    }
-
     // @todo reconsider user IDs in commits?
     var commitMessage = [
         'Slack upload: ' + file.name,
@@ -134,16 +125,19 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
     var downloadedLength = null;
     var commitHash = null;
 
-    getSlackFile(file).then(function (sourceFileBuffer) {
-        downloadedLength = sourceFileBuffer.length;
+    processor.processFile(file.name, function () {
+        return getSlackFile(file).then(function (sourceFileBuffer) {
+            // measure some meta-data and keep going as before
+            downloadedLength = sourceFileBuffer.length;
 
-        console.log('got data', downloadedLength);
+            console.log('got data', downloadedLength);
 
-        var fileMap = {};
-
-        targetFormatterList.forEach(function (targetFormatter) {
-            targetFormatter(sourceFileBuffer, fileMap);
+            return sourceFileBuffer;
         });
+    }).then(function (fileMap) {
+        if (Object.keys(fileMap).length < 1) {
+            return null;
+        }
 
         var repo = new Repo(gitUrl);
 
@@ -171,6 +165,11 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             });
         });
     }).then(function (resultSlackText) {
+        // no-op
+        if (resultSlackText === null) {
+            return;
+        }
+
         console.log('successfully processed slack upload', file.name);
 
         // @todo markdown needs escaping
