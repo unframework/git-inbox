@@ -1,5 +1,6 @@
 var fs = require('fs');
 var yaml = require('js-yaml');
+var moment = require('moment');
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
@@ -147,17 +148,14 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            var branchName = processor.generateBranchName(e.user);
-            var pushResult = repo.push(branchName);
-
             // @todo encapsulate this
             return processor.getIsPushGHR()
-                ? pushResult.then(function () {
-                    return submitGitHubPull(processor.getGHPullBase(), branchName, e.user).then(function (resultUrl) {
+                ? repo.push(('git-inbox-' + e.user + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase()).then(function (branchName) {
+                    return submitGitHubPull(processor.getTargetBranch(), branchName, e.user).then(function (resultUrl) {
                         return 'GitHub pull request ' + escapeSlackText(resultUrl);
                     });
                 })
-                : pushResult.then(function () {
+                : repo.push(processor.getTargetBranch()).then(function () {
                     return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
                 });
         }).then(function (resultSlackText) {
