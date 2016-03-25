@@ -7,12 +7,14 @@ var request = require('request');
 
 var Repo = require('./lib/Repo');
 var Processor = require('./lib/Processor');
+var Pusher = require('./lib/Pusher');
 
 var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
-var processor = new Processor(configYaml.slack || [], configYaml.push || null);
+var processor = new Processor(configYaml.slack || []);
+var pusher = new Pusher(configYaml.push || null);
 
 function getGitHubPullCreationUrl(repoUrl) {
     var match = /([^\/]+)\/([^\/]+?)(\.git)?$/.exec(repoUrl);
@@ -149,13 +151,13 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             console.log('committed files', commitHash);
 
             // @todo encapsulate this
-            return processor.getIsPushGHR()
+            return pusher.getIsPushGHR()
                 ? repo.push(('git-inbox-' + e.user + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase()).then(function (branchName) {
-                    return submitGitHubPull(processor.getTargetBranch(), branchName, e.user).then(function (resultUrl) {
+                    return submitGitHubPull(pusher.getTargetBranch(), branchName, e.user).then(function (resultUrl) {
                         return 'GitHub pull request ' + escapeSlackText(resultUrl);
                     });
                 })
-                : repo.push(processor.getTargetBranch()).then(function () {
+                : repo.push(pusher.getTargetBranch()).then(function () {
                     return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
                 });
         }).then(function (resultSlackText) {
