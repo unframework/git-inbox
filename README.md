@@ -4,6 +4,7 @@ Slack bot uploads to Git commits/PRs.
 
 ## To Do
 
+- Heroku button
 - ~~text/raw uploads~~
 - CSV uploads
 - show diff (if small) in Slack channel as inline attachment
@@ -24,10 +25,6 @@ cat <<EOF > env.sh
 export TARGET_GIT_URL=https://<user>:<personal-token>@github.com/<user>/<repo>.git
 export SLACK_AUTH_TOKEN=<auth-token>
 EOF
-
-# repo tests
-. env.sh
-node index.js
 
 # Slack tests
 . env.sh
