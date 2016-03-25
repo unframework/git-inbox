@@ -11,10 +11,6 @@ var Pusher = require('./lib/Pusher');
 var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
-var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
-var processor = new Processor(configYaml.slack || []);
-var pusher = new Pusher(configYaml.push || null, gitUrl);
-
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
         var fileUrl = file.url_private_download;
@@ -78,32 +74,38 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
     var downloadedLength = null;
     var commitHash = null;
 
-    processor.processFile(file.name, function () {
-        return getSlackFile(file).then(function (sourceFileBuffer) {
-            // measure some meta-data and keep going as before
-            downloadedLength = sourceFileBuffer.length;
+    var repo = new Repo(gitUrl);
 
-            console.log('got data', downloadedLength);
+    return repo.readFile('.git-inbox.yml').then(function (configYamlBuffer) {
+        var configYaml = yaml.safeLoad(configYamlBuffer);
+        var processor = new Processor(configYaml.files || []);
+        var pusher = new Pusher(configYaml.push || null, gitUrl);
 
-            return sourceFileBuffer;
-        });
-    }).then(function (fileMap) {
-        if (Object.keys(fileMap).length < 1) {
-            return null;
-        }
+        return processor.processFile(file.name, function () {
+            return getSlackFile(file).then(function (sourceFileBuffer) {
+                // measure some meta-data and keep going as before
+                downloadedLength = sourceFileBuffer.length;
 
-        var repo = new Repo(gitUrl);
+                console.log('got data', downloadedLength);
 
-        return repo.commitFiles(fileMap, commitMessage).then(function (commit) {
-            commitHash = commit.allocfmt();
-            console.log('committed files', commitHash);
+                return sourceFileBuffer;
+            });
+        }).then(function (fileMap) {
+            if (Object.keys(fileMap).length < 1) {
+                return null;
+            }
 
-            return pusher.push(e.user, function (branchName) {
-                return repo.push(branchName);
-            }, function (resultUrl) {
-                return 'GitHub pull request ' + escapeSlackText(resultUrl);
-            }, function (branchName) {
-                return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
+            return repo.commitFiles(fileMap, commitMessage).then(function (commit) {
+                commitHash = commit.allocfmt();
+                console.log('committed files', commitHash);
+
+                return pusher.push(e.user, function (branchName) {
+                    return repo.push(branchName);
+                }, function (resultUrl) {
+                    return 'GitHub pull request ' + escapeSlackText(resultUrl);
+                }, function (branchName) {
+                    return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
+                });
             });
         }).then(function (resultSlackText) {
             // @todo also cleanup on error

@@ -1,5 +1,5 @@
 # configure slack listener
-slack:
+files:
   - data/simple-example.yml # simple target path
 
   - in: example*.xlsx # glob
