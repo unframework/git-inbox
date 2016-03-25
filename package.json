@@ -8,6 +8,10 @@
   },
   "author": "Nick Matantsev <nick.matantsev@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unframework/git-inbox"
+  },
   "dependencies": {
     "bluebird": "^3.3.3",
     "js-yaml": "^3.5.3",

@@ -1,0 +1,23 @@
+{
+    "name": "Git Inbox: The Bot",
+    "description": "git-inbox: Slack bot uploads to Git commits/PRs",
+    "repository": "https://github.com/unframework/git-inbox",
+    "keywords": [
+        "slack",
+        "git",
+        "bot",
+        "automation",
+        "yaml",
+        "xls",
+        "xlsx",
+        "excel"
+    ],
+    "env": {
+        "SLACK_AUTH_TOKEN": {
+            "description": "Slack auth token"
+        },
+        "TARGET_GIT_URL": {
+            "description": "Git repo to work on: https://<user>:<personal-token>@github.com/<user>/<repo>.git"
+        }
+    }
+}

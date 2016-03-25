@@ -76,6 +76,7 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
 
     var repo = new Repo(gitUrl);
 
+    // @todo if config not found/misconfigured, report that as special Slack response
     return repo.readFile('.git-inbox.yml').then(function (configYamlBuffer) {
         var configYaml = yaml.safeLoad(configYamlBuffer);
         var processor = new Processor(configYaml.files || []);
