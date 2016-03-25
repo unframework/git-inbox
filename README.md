@@ -2,6 +2,36 @@
 
 Slack bot to convert uploads into Git commits/PRs. Also, since Excel is so popular, transform XLSX into YAML for techies.
 
+Add the description file to your repo root: `.git-inbox.yml`:
+
+```yaml
+# file upload and conversion configuration
+files:
+  # simple file upload examples
+  - hello/acme.txt # any file upload starting with "acme" saved into "hello/acme.txt"
+
+  - in: *foobar*.txt # any text file upload containing "foobar" in the name
+    out: beep.txt # saved in "beep.txt"
+
+  # Excel to YAML conversion examples
+  - data/boop.yml # any Excel file upload starting with "boop" converted to YAML and saved into "data/boop.yml"
+
+  - in: hi.xlsx # any Excel file named "hi.xlsx"
+    out:
+      format: yaml # convert to YAML
+      path: my/sub/folder/hithere.yaml # save into given repo path
+
+# publish to repo using GitHub pull requests
+push:
+  type: github-request # open a GitHub pull request
+  base: master # use "master" as base branch (default)
+
+# alternative mode: direct commit to branch
+# push:
+#   type: branch # push to branch
+#   branch: development # commit to "development" branch
+```
+
 ## To Do
 
 - Heroku button
