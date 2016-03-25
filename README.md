@@ -1,6 +1,6 @@
 # git-inbox
 
-Slack bot uploads to Git commits/PRs.
+Slack bot to convert uploads into Git commits/PRs. Also, since Excel is so popular, transform XLSX into YAML for techies.
 
 ## To Do
 
