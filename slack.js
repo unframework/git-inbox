@@ -1,4 +1,5 @@
 var fs = require('fs');
+var yaml = require('js-yaml');
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
@@ -9,7 +10,8 @@ var Processor = require('./lib/Processor');
 var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
-var processor = new Processor(fs.readFileSync(__dirname + '/config.yml'));
+var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
+var processor = new Processor(configYaml.slack || [], configYaml.push || null);
 
 function getGitHubPullCreationUrl(repoUrl) {
     var match = /([^\/]+)\/([^\/]+?)(\.git)?$/.exec(repoUrl);
