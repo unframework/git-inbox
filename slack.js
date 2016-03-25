@@ -12,7 +12,7 @@ var slackAuthToken = process.env.SLACK_AUTH_TOKEN || '';
 var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
-var processor = new Processor(configYaml.slack || []);
+var processor = new Processor(configYaml.files || []);
 var pusher = new Pusher(configYaml.push || null, gitUrl);
 
 function getSlackFile(file) {
