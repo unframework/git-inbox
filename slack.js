@@ -1,6 +1,5 @@
 var fs = require('fs');
 var yaml = require('js-yaml');
-var moment = require('moment');
 var Promise = require('bluebird');
 var Slack = require('slack-client');
 var request = require('request');
@@ -14,58 +13,7 @@ var gitUrl = process.env.TARGET_GIT_URL || '';
 
 var configYaml = yaml.safeLoad(fs.readFileSync(__dirname + '/config.yml'));
 var processor = new Processor(configYaml.slack || []);
-var pusher = new Pusher(configYaml.push || null);
-
-function getGitHubPullCreationUrl(repoUrl) {
-    var match = /([^\/]+)\/([^\/]+?)(\.git)?$/.exec(repoUrl);
-    if (!match) {
-        throw new Error('not a recognizable GitHub repo URL');
-    }
-
-    var owner = match[1];
-    var repo = match[2];
-
-    return 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/pulls';
-}
-
-function getGitHubAuthToken(repoUrl) {
-    var match = /:([^:]+)@github.com\//.exec(repoUrl);
-    if (!match) {
-        throw new Error('not a recognizable GitHub repo URL');
-    }
-
-    return match[1];
-}
-
-function submitGitHubPull(baseName, branchName, slackUserId) {
-    var url = getGitHubPullCreationUrl(gitUrl);
-    var authToken = getGitHubAuthToken(gitUrl);
-
-    return new Promise(function (resolve, reject) {
-        console.log('GitHub PR creation post', url);
-
-        request.post({
-            url: url,
-            auth: { bearer: authToken },
-            headers: {
-                'User-Agent': 'git-inbox (unframework.com)'
-            },
-            json: true,
-            body: {
-                title: 'Incoming git-inbox upload by Slack user ' + slackUserId,
-                head: branchName,
-                base: baseName
-            }
-        }, function (err, resp, body) {
-            if (err || resp.statusCode !== 201) {
-                reject(err || body);
-                return;
-            }
-
-            resolve(body.html_url);
-        });
-    });
-}
+var pusher = new Pusher(configYaml.push || null, gitUrl);
 
 function getSlackFile(file) {
     return new Promise(function (resolve, reject) {
@@ -150,16 +98,13 @@ slackClient.on(Slack.RTM_EVENTS.MESSAGE, function (e) {
             commitHash = commit.allocfmt();
             console.log('committed files', commitHash);
 
-            // @todo encapsulate this
-            return pusher.getIsPushGHR()
-                ? repo.push(('git-inbox-' + e.user + '-' + moment().format('YYYY-MM-DD-HH-mm-ss')).toLowerCase()).then(function (branchName) {
-                    return submitGitHubPull(pusher.getTargetBranch(), branchName, e.user).then(function (resultUrl) {
-                        return 'GitHub pull request ' + escapeSlackText(resultUrl);
-                    });
-                })
-                : repo.push(pusher.getTargetBranch()).then(function () {
-                    return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
-                });
+            return pusher.push(e.user, function (branchName) {
+                return repo.push(branchName);
+            }, function (resultUrl) {
+                return 'GitHub pull request ' + escapeSlackText(resultUrl);
+            }, function (branchName) {
+                return 'commit hash _' + commitHash.slice(0, 7) + '_ on *' + branchName + '*';
+            });
         }).then(function (resultSlackText) {
             // @todo also cleanup on error
             return repo.destroy().then(function () {
