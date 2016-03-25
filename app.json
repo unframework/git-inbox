@@ -4,8 +4,9 @@
     "repository": "https://github.com/unframework/git-inbox",
     "keywords": [
         "slack",
-        "git",
         "bot",
+        "git",
+        "github",
         "automation",
         "yaml",
         "xls",
