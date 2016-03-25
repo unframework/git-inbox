@@ -22,7 +22,7 @@ Add the description file to your repo root: `.git-inbox.yml`:
 # file upload and conversion configuration
 files:
   # simple file upload examples
-  - hello/acme.txt # any file upload starting with "acme" saved into "hello/acme.txt"
+  - hello/acme.txt # any file upload named "acme.txt" saved into "hello/acme.txt"
 
   - in: *foobar*.txt # any text file upload containing "foobar" in the name
     out: beep.txt # saved in "beep.txt"
