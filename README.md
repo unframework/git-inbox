@@ -2,6 +2,20 @@
 
 Slack bot to convert uploads into Git commits/PRs. Also, since Excel is so popular, transform XLSX into YAML for techies.
 
+## Setup
+
+Deploy this repo to Heroku or any other Node.js host.
+
+Set up environment vars (config vars in Heroku):
+
+- `TARGET_GIT_URL`: Git repo URL for commit access
+    - format: `https://<user>:<personal-token>@github.com/<user>/<repo>.git`
+    - create personal access token on the [GitHub Personal access tokens page](https://github.com/settings/tokens)
+    - if your repo is at `https://github.com/alice/hello-world` and the secret personal access token is `abcd1234`, use: `https://alice:abcd1234@github.com/alice/hello-world.git`
+- `SLACK_AUTH_TOKEN`: Slack bot integration token
+    - to get the token: configure a new bot on the [Slack bot config page](https://slack.com/apps/manage/A0F7YS25R-bots)
+    - the secret token will look something like: `xyz-12345678-ABCDabcd12345678`
+
 Add the description file to your repo root: `.git-inbox.yml`:
 
 ```yaml
@@ -31,6 +45,8 @@ push:
 #   type: branch # push to branch
 #   branch: development # commit to "development" branch
 ```
+
+Now, any time you upload something to the Slack channel where the bot lives, it will commit that file and create a pull request to the target repo! 🤖
 
 ## To Do
 
