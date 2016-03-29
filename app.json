@@ -1,5 +1,5 @@
 {
-    "name": "Git Inbox: The Bot",
+    "name": "Git Inbox: The Slack Bot",
     "description": "git-inbox: Slack bot to convert uploads into Git commits/PRs",
     "repository": "https://github.com/unframework/git-inbox",
     "keywords": [
