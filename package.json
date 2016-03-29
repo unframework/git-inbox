@@ -13,6 +13,9 @@
     "type": "git",
     "url": "https://github.com/unframework/git-inbox"
   },
+  "engines": {
+    "node": "0.12.7"
+  },
   "dependencies": {
     "bluebird": "^3.3.3",
     "js-yaml": "^3.5.3",
