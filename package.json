@@ -4,6 +4,7 @@
   "description": "git-inbox: Slack bot to convert uploads into Git commits/PRs",
   "main": "slack.js",
   "scripts": {
+    "start": "node slack.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Nick Matantsev <nick.matantsev@gmail.com>",
