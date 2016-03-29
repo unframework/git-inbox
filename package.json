@@ -21,7 +21,7 @@
     "js-yaml": "^3.5.3",
     "minimatch": "^3.0.0",
     "moment": "^2.11.2",
-    "nodegit": "^0.11.5",
+    "nodegit": "0.11.5",
     "request": "^2.69.0",
     "rimraf": "^2.5.2",
     "slack-client": "^2.0.4",
