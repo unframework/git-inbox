@@ -4,8 +4,6 @@ Slack bot to convert uploads into Git commits/PRs. Also, since Excel is so popul
 
 ## Setup
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/unframework/git-inbox)
-
 Deploy this repo to Heroku or any other Node.js host.
 
 Set up environment vars (config vars in Heroku):
