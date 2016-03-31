@@ -14,7 +14,7 @@
     "url": "https://github.com/unframework/git-inbox"
   },
   "engines": {
-    "node": "0.12.7"
+    "node": "4.4.1"
   },
   "dependencies": {
     "bluebird": "^3.3.3",
