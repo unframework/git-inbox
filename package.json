@@ -4,6 +4,7 @@
   "description": "git-inbox: Slack bot to convert uploads into Git commits/PRs",
   "main": "slack.js",
   "scripts": {
+    "postinstall": "npm install nodegit@0.12.1 && cd node_modules/nodegit && npm install --dev --ignore-scripts && cd ../.. && npm install nodegit@0.12.1",
     "start": "node slack.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,7 +22,6 @@
     "js-yaml": "^3.5.3",
     "minimatch": "^3.0.0",
     "moment": "^2.11.2",
-    "nodegit": "0.11.5",
     "request": "^2.69.0",
     "rimraf": "^2.5.2",
     "slack-client": "^2.0.4",
