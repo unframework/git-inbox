@@ -50,6 +50,7 @@ Now, any time you upload something to the Slack channel where the bot lives, it 
 
 ## To Do
 
+- local `npm install git-inbox` instructions to help try out/experiment
 - Heroku button
 - ~~text/raw uploads~~
 - CSV uploads
